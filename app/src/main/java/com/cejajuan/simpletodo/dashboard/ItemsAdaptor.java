@@ -1,4 +1,4 @@
-package com.cejajuan.simpletodo;
+package com.cejajuan.simpletodo.dashboard;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -36,46 +36,8 @@ import java.util.List;
 
 // Responsible for displaying data from the model into a row in the recycler view
 public class ItemsAdaptor extends RecyclerView.Adapter<ItemsAdaptor.ViewHolder> {
-    public interface OnLongClickLister {
-        void onItemLongClicked(int position);
-    }
 
-    List<String> items;
-    OnLongClickLister longClickLister;
-
-    public ItemsAdaptor(List<String> items, OnLongClickLister longClickListener) {
-        this.items = items;
-        this.longClickLister = longClickListener;
-    }
-
-    @NonNull
-    @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // use a layout inflater to inflate a view
-        View todoView = LayoutInflater.from(parent.getContext())
-                .inflate(android.R.layout.simple_list_item_1, parent, false);
-
-        // wrap the view in a holder and return it
-        return new ViewHolder(todoView);
-    }
-
-    // Responsible for binding to a particular view holder
-    @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        // grab the item at the position
-        String item = items.get(position);
-
-        // bind the item into the specified view holder
-        holder.bind(item);
-    }
-
-    @Override
-    public int getItemCount() {
-        return items.size();
-    }
-
-    // Container to provided easy access to views that represent each row of
-    // the list
+    // Provide a reference to the type of views that you are using (custom ViewHolder).
     class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvItem;
 
@@ -87,15 +49,64 @@ public class ItemsAdaptor extends RecyclerView.Adapter<ItemsAdaptor.ViewHolder> 
         // update the view inside of the view holder with this data
         public void bind(String item) {
             tvItem.setText(item);
-            tvItem.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View view) {
-                    // notify the listener which position was long pressed
-                    longClickLister.onItemLongClicked(getAdapterPosition());
-                    return false;
-                }
+
+            // onclick listener used by the Main activity to check when the user
+            // needs to update the text of a list item with items position
+            tvItem.setOnClickListener(view -> {
+                clickListener.onItemClick(getAdapterPosition());
+            });
+
+            // notify the listener which position was long pressed this is
+            // a callback used to remove list item from the MainActivity class
+            tvItem.setOnLongClickListener(view -> {
+                longClickLister.onItemLongClicked(getAdapterPosition());
+                return true;
             });
         }
     }
 
+    // interfaces are implemented by the MainActivity class
+    public interface OnClickListener {
+        void onItemClick(int position);
+    }
+
+    public interface OnLongClickListener {
+        void onItemLongClicked(int position);
+    }
+
+    List<String> items;
+    OnLongClickListener longClickLister;
+    OnClickListener clickListener;
+
+    public ItemsAdaptor(List<String> items, OnLongClickListener longClickListener,
+                        OnClickListener clickListener) {
+        this.items = items;
+        this.longClickLister = longClickListener;
+        this.clickListener = clickListener;
+    }
+
+    // Create new views (invoked by the layout manager)
+    @NonNull
+    @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // use a layout inflater to inflate a view
+        View todoView = LayoutInflater.from(parent.getContext())
+                .inflate(android.R.layout.simple_list_item_1, parent, false);
+
+        // wrap the view in a ViewHolder and return it
+        return new ViewHolder(todoView);
+    }
+
+    // Replace the contents of a view (invoked by the layout manager)
+    @Override
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        // bind the item into the specified view holder
+        holder.bind(items.get(position));
+    }
+
+    // Return the size of your dataset (invoked by the layout manager)
+    @Override
+    public int getItemCount() {
+        return items.size();
+    }
 }

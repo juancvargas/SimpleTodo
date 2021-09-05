@@ -1,14 +1,23 @@
-package com.cejajuan.simpletodo;
+package com.cejajuan.simpletodo.dashboard;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import com.cejajuan.simpletodo.editscreen.EditActivity;
+import com.cejajuan.simpletodo.R;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,14 +27,40 @@ import java.util.ArrayList;
 import org.apache.commons.io.FileUtils;
 
 public class MainActivity extends AppCompatActivity {
+    public static final String KEY_ITEM_TEXT = "item_text";
+    public static final String KEY_ITEM_INDEX = "item_index";
+
     // container for the todo items
     ArrayList<String> items;
 
-    // references for components aka views in the activity_main.xml layout
+    // references for views in layouts
     Button btnAdd;
     EditText etItem;
     RecyclerView rvItems;
     ItemsAdaptor itemsAdaptor;
+    ActivityResultLauncher<Intent> mEditLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if (result.getResultCode() == Activity.RESULT_OK) {
+                            // There are no request codes
+                            Intent data = result.getData();
+
+                            assert data != null;
+                            String newText = data.getStringExtra(MainActivity.KEY_ITEM_TEXT);
+                            int position = data.getIntExtra(MainActivity.KEY_ITEM_INDEX, 0);
+                            items.set(position, newText);
+
+                            saveItems();
+                            itemsAdaptor.notifyItemChanged(position);
+                            Toast.makeText(getApplicationContext(), "Item Updated!"
+                                    , Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+        );
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,8 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
         loadItems();
 
-        ItemsAdaptor.OnLongClickLister onLongClickLister =
-                position -> {
+        ItemsAdaptor.OnLongClickListener longClickListener = position -> {
                     // delete the item from model
                     items.remove(position);
                     // notify the adaptor of the position of the deleted item
@@ -50,8 +84,20 @@ public class MainActivity extends AppCompatActivity {
                     saveItems();
                 };
 
+        ItemsAdaptor.OnClickListener clickListener = position -> {
+            // first parameter is the context, second is the class of the activity to launch
+            Intent i = new Intent(MainActivity.this, EditActivity.class);
+
+            // put "extras" into the bundle for access in the edit activity
+            i.putExtra(KEY_ITEM_TEXT, items.get(position));
+            i.putExtra(KEY_ITEM_INDEX, position);
+
+            // brings up the edit activity
+            mEditLauncher.launch(i);
+        };
+
         // provide an Adaptor and Layout to the recycler view
-        itemsAdaptor = new ItemsAdaptor(items, onLongClickLister);
+        itemsAdaptor = new ItemsAdaptor(items, longClickListener, clickListener);
         rvItems.setAdapter(itemsAdaptor);
         rvItems.setLayoutManager(new LinearLayoutManager(this));
 
